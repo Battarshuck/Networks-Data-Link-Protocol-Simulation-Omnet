@@ -17,17 +17,36 @@
 #define __GOBACKN_NODE_H_
 
 #include <omnetpp.h>
+#include "Variables.h"
+#include <vector>
+#include <fstream>
+#include <utility>
+#include "Message_m.h"
 
 using namespace omnetpp;
+using namespace std;
 
 /**
  * TODO - Generated class
  */
+
 class Node : public cSimpleModule
 {
+    role myRole;
+    vector<pair<string, string>> data; //data.first -> error code e.g. 1011
+                                       //data.second -> actual text
+
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
+
+    void readData();
+    bool checkParity(Message *msg);                   //check message parity (error detection)
+    char createParity(string payload, int SeqNum);    //creates the parity byte in the trailer
+    Message* createFrame(string text, int seqNum);    //creates the frame
+    string byteStuffing(string text);                 //DONT USE (utility function)
+    string byteDeStuffing(string payload);
+    Message* modification(Message*msg);
 };
 
 #endif

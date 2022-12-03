@@ -17,12 +17,18 @@
 #define __GOBACKN_COORDINATOR_H_
 
 #include <omnetpp.h>
+#include "Message_m.h"
+#include <fstream>
+#include <string>
+#include "Variables.h"
+
 
 using namespace omnetpp;
 
 /**
  * TODO - Generated class
  */
+
 class Coordinator : public cSimpleModule
 {
   protected:

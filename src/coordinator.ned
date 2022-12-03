@@ -20,4 +20,6 @@ package gobackn;
 //
 simple Coordinator
 {
+     gates:
+        output out[];
 }

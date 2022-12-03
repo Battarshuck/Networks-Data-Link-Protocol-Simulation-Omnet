@@ -13,14 +13,24 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package gobackn;
+//cplusplus {{
+//}}
+//class noncobject SomeType;
+//
+//cplusplus {{
+//typedef OtherType std::map<int,int>;
+//}}
+//class noncobject OtherType;
 
 //
-// TODO auto-generated module
+// TODO generated message class
 //
-simple Node
-{
-    gates:
-        input in[];
-        output out;
+packet Message {
+   int seqNum;
+   string payload;
+   char trailer;
+   int frameType;
+   int ackNum;
+   bool messageType; // 0 -> coordinator message
+   					// 1 -> node message
 }

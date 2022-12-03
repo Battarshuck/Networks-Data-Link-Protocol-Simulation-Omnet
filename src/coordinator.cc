@@ -14,15 +14,35 @@
 // 
 
 #include "coordinator.h"
+using namespace std;
+
 
 Define_Module(Coordinator);
+
 
 void Coordinator::initialize()
 {
     // TODO - Generated method body
+    ifstream newfile;
+    newfile.open("coor.txt");
+
+    Message* msg = new Message("Hi");
+    string startingNode, startingTime;
+    newfile >> startingNode;
+    msg->setPayload(startingNode.c_str());
+    newfile >> startingTime;
+    scheduleAt(simTime()+stod(startingTime), msg);
+    newfile.close();
+
 }
 
 void Coordinator::handleMessage(cMessage *msg)
 {
+    Message* msg2 = check_and_cast<Message*>(msg);
+    msg2->setMessageType(COORD_MSG);
+    send(msg, "out", stoi(msg2->getPayload()));
+    cout << "----------------------------" << endl;
+    cout << "Sending from coordinator to node "<< stoi(msg2->getPayload()) << " at " << (double)(simTime().dbl()) << endl;
+    cout << "----------------------------" << endl;
     // TODO - Generated method body
 }
