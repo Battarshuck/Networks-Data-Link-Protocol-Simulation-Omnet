@@ -19,7 +19,9 @@ package gobackn;
 // TODO auto-generated module
 //
 simple Node
-{
+{	
+    parameters:
+        double PD;
     gates:
         input in[];
         output out;

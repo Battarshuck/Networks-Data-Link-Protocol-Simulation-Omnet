@@ -116,7 +116,6 @@ Message* Node::createFrame(string text, int seqNum)
 Message* Node::modification(Message*msg)
 {
     string payload(msg->getPayload());
-    //cout<<"Payload Before modification: "<<payload<<endl;
     int size=payload.length();
     bitset<8> forerror (1);
     vector<bitset<8>> vec;
@@ -124,11 +123,10 @@ Message* Node::modification(Message*msg)
     {
         bitset<8> xbits (payload[i]);
         vec.push_back(xbits);
-        //cout<<xbits.to_string()<<endl;
     }
 
     int error=int(uniform(0,size));
-       vec[error]=vec[error]^forerror;
+    vec[error]=vec[error]^forerror;
 
     string collect="";
 
@@ -136,8 +134,7 @@ Message* Node::modification(Message*msg)
     {
         collect=collect+(char)(vec[it]).to_ulong();
     }
-    //cout<<"New payload is: "<<collect<<endl;
-    //cout<<"Payload Size: "<<size<<endl;
+
     msg->setPayload(collect.c_str());
     return msg;
     }
@@ -167,13 +164,13 @@ void Node::initialize()
 void Node::handleMessage(cMessage *msg)
 {
     Message* msg2 = check_and_cast<Message*>(msg);
-
+    double PD= par("PD").doubleValue();
     if(!msg->isSelfMessage()){
         if(msg2->getMessageType() == COORD_MSG && stoi(msg2->getPayload()) == getIndex()){
             myRole = SENDER;
             readData();
         }
-        scheduleAt(simTime()+2.0, msg);
+        scheduleAt(simTime()+PD, msg);
     }
     else{
         cout << "----------------------------" << endl;
@@ -183,9 +180,22 @@ void Node::handleMessage(cMessage *msg)
         if(myRole == SENDER){
 
             //**************************TEST***************************
-            string text = data[0].second;
+            string text = data[1].second;
             msg2 = createFrame(text, 1);
-            msg2=modification(msg2);
+            if(data[1].first[1]=='1')
+            {
+                return;
+            }
+
+            if(data[1].first[0]=='1')
+            {
+                msg2=modification(msg2);
+            }
+            if(data[1].first[2]=='1')
+            {
+                //TODO//send twice
+            }
+
             cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
             //******************************************************
 
