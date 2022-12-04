@@ -185,7 +185,7 @@ Message::Message(const char *name, short kind) : ::omnetpp::cPacket(name,kind)
     this->trailer = 0;
     this->frameType = 0;
     this->ackNum = 0;
-    this->messageType = false;
+    this->messageType = 0;
 }
 
 Message::Message(const Message& other) : ::omnetpp::cPacket(other)
@@ -287,12 +287,12 @@ void Message::setAckNum(int ackNum)
     this->ackNum = ackNum;
 }
 
-bool Message::getMessageType() const
+int Message::getMessageType() const
 {
     return this->messageType;
 }
 
-void Message::setMessageType(bool messageType)
+void Message::setMessageType(int messageType)
 {
     this->messageType = messageType;
 }
@@ -430,7 +430,7 @@ const char *MessageDescriptor::getFieldTypeString(int field) const
         "char",
         "int",
         "int",
-        "bool",
+        "int",
     };
     return (field>=0 && field<6) ? fieldTypeStrings[field] : nullptr;
 }
@@ -504,7 +504,7 @@ std::string MessageDescriptor::getFieldValueAsString(void *object, int field, in
         case 2: return long2string(pp->getTrailer());
         case 3: return long2string(pp->getFrameType());
         case 4: return long2string(pp->getAckNum());
-        case 5: return bool2string(pp->getMessageType());
+        case 5: return long2string(pp->getMessageType());
         default: return "";
     }
 }
@@ -524,7 +524,7 @@ bool MessageDescriptor::setFieldValueAsString(void *object, int field, int i, co
         case 2: pp->setTrailer(string2long(value)); return true;
         case 3: pp->setFrameType(string2long(value)); return true;
         case 4: pp->setAckNum(string2long(value)); return true;
-        case 5: pp->setMessageType(string2bool(value)); return true;
+        case 5: pp->setMessageType(string2long(value)); return true;
         default: return false;
     }
 }

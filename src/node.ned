@@ -19,9 +19,11 @@ package gobackn;
 // TODO auto-generated module
 //
 simple Node
-{	
+{
     parameters:
         double PD;
+        int windowSize = default(5);
+        double TO = default(10.0);
     gates:
         input in[];
         output out;

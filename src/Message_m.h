@@ -31,7 +31,7 @@
  *     char trailer;
  *     int frameType;
  *     int ackNum;
- *     bool messageType; // 0 -> coordinator message
+ *     int messageType; // 0 -> coordinator message
  *    					// 1 -> node message
  * }
  * </pre>
@@ -44,7 +44,7 @@ class Message : public ::omnetpp::cPacket
     char trailer;
     int frameType;
     int ackNum;
-    bool messageType;
+    int messageType;
 
   private:
     void copy(const Message& other);
@@ -73,8 +73,8 @@ class Message : public ::omnetpp::cPacket
     virtual void setFrameType(int frameType);
     virtual int getAckNum() const;
     virtual void setAckNum(int ackNum);
-    virtual bool getMessageType() const;
-    virtual void setMessageType(bool messageType);
+    virtual int getMessageType() const;
+    virtual void setMessageType(int messageType);
 };
 
 inline void doParsimPacking(omnetpp::cCommBuffer *b, const Message& obj) {obj.parsimPack(b);}

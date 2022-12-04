@@ -14,12 +14,11 @@
 // 
 
 #include "node.h"
-#include <bitset>
 using namespace std;
 
 Define_Module(Node);
 
-//*******************READING DATA*********************
+//*******************READING DATA************************
 void Node::readData()
 {
     //creating file name
@@ -72,8 +71,8 @@ bool Node::checkParity(Message* msg)
 //*******************************************************
 
 
-//*******************FRAME CREATION*********************
-char Node::createParity(string payload, int seqNum)
+//*******************FRAME CREATION***********************
+char Node::createParity(string payload, seq_nr seqNum)
 {
 
     bitset<8> parity(seqNum);
@@ -86,7 +85,10 @@ char Node::createParity(string payload, int seqNum)
     return (char)parity.to_ulong();
 
 }
+//********************************************************
 
+
+//*******************BYTE STUFFING*************************
 string Node::byteStuffing(string text)
 {
     string payload = "";
@@ -98,8 +100,10 @@ string Node::byteStuffing(string text)
        }
     return '$' + payload + '$';
 }
+//*********************************************************
 
-Message* Node::createFrame(string text, int seqNum)
+//*******************CREATE FRAME**************************
+Message* Node::createFrame(string text, seq_nr seqNum)
 {
     string payload = byteStuffing(text);
     char parityByte = createParity(payload, seqNum);
@@ -112,8 +116,24 @@ Message* Node::createFrame(string text, int seqNum)
 
     return msg;
 }
+//*********************************************************
 
-Message* Node::modification(Message*msg)
+
+//*******************PAYLOAD DESTUFFING*********************
+string Node::byteDeStuffing(string payload)
+{
+    string message = "";
+    for(int i = 1; i < payload.length()-1; ++i)
+    {
+        if(payload[i] == '/')
+            continue;
+        message += payload[i];
+    }
+    return message;
+}
+//**********************************************************
+
+void Node::modification(Message*msg)
 {
     string payload(msg->getPayload());
     int size=payload.length();
@@ -136,43 +156,67 @@ Message* Node::modification(Message*msg)
     }
 
     msg->setPayload(collect.c_str());
-    return msg;
     }
 //*******************************************************
 
 
-//*******************PAYLOAD DESTUFFING*********************
-string Node::byteDeStuffing(string payload)
-{
-    string message = "";
-    for(int i = 1; i < payload.length()-1; ++i)
-    {
-        if(payload[i] == '/')
-            continue;
-        message += payload[i];
-    }
-    return message;
+
+//*******************GO BACKN FUNCTIONS*********************
+void Node::inc(seq_nr& currentSeqNum){
+    if(currentSeqNum < maxSeqNum)
+        currentSeqNum++;
+    else
+        currentSeqNum=0;
 }
+//**********************************************************
+
+void Node::startTimer(seq_nr seqNum){
+    Message* timerMessage = new Message("TIMEOUT");
+
+    timerMessage->setPayload(to_string(seqNum).c_str());
+    timerMessage->setMessageType(TIMEOUT_MSG);
+
+    timerMessages[seqNum] = timerMessage;
+
+    scheduleAt(simTime()+timeout, timerMessage);
+}
+
+//**********************************************************
+void Node::stopTimer(seq_nr seqNum){
+    cancelAndDelete(timerMessages[seqNum]);
+}
+
+//**********************************************************
+
 //**********************************************************
 
 void Node::initialize()
 {
     // TODO - Generated method body
     myRole = RECEIVER;
+    propagationDelay = par("PD").doubleValue();
+    timeout = par("TO").doubleValue();
+    senderWindowSize = par("windowSize").intValue();
+    maxSeqNum = senderWindowSize;
 }
+
+
+
 
 void Node::handleMessage(cMessage *msg)
 {
     Message* msg2 = check_and_cast<Message*>(msg);
-    double PD= par("PD").doubleValue();
+
     if(!msg->isSelfMessage()){
         if(msg2->getMessageType() == COORD_MSG && stoi(msg2->getPayload()) == getIndex()){
             myRole = SENDER;
             readData();
         }
-        scheduleAt(simTime()+PD, msg);
+        scheduleAt(simTime()+2.0, msg);
+
     }
     else{
+
         cout << "----------------------------" << endl;
         cout<< "Sending at " << (double)(simTime().dbl()) << endl;
         cout << "----------------------------" << endl;
@@ -180,29 +224,14 @@ void Node::handleMessage(cMessage *msg)
         if(myRole == SENDER){
 
             //**************************TEST***************************
-            string text = data[1].second;
+            string text = data[0].second;
             msg2 = createFrame(text, 1);
-            if(data[1].first[1]=='1')
-            {
-                return;
-            }
-
-            if(data[1].first[0]=='1')
-            {
-                msg2=modification(msg2);
-            }
-            if(data[1].first[2]=='1')
-            {
-                //TODO//send twice
-            }
-
+            modification(msg2);
             cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
             //******************************************************
 
             msg2->setName("My role is a sender");
-        }
-        else
-        {
+        }else{
 
             //**********************TEST*******************
             if(checkParity(msg2))
@@ -213,6 +242,6 @@ void Node::handleMessage(cMessage *msg)
 
             msg2->setName("My role is a receiver");
         }
-        send(msg2, "out");
+        sendDelayed(msg2, 2.0, "out");
     }
 }

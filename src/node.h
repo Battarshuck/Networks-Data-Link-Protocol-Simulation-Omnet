@@ -22,6 +22,10 @@
 #include <fstream>
 #include <utility>
 #include "Message_m.h"
+#include <bitset>
+#include <map>
+
+typedef int seq_nr;
 
 using namespace omnetpp;
 using namespace std;
@@ -33,6 +37,13 @@ using namespace std;
 class Node : public cSimpleModule
 {
     role myRole;
+    double propagationDelay;
+    double timeout;
+    int senderWindowSize;
+    int receiverWindowSize = 1;
+    seq_nr maxSeqNum;
+
+    map<seq_nr, Message*> timerMessages;
     vector<pair<string, string>> data; //data.first -> error code e.g. 1011
                                        //data.second -> actual text
 
@@ -42,11 +53,14 @@ class Node : public cSimpleModule
 
     void readData();
     bool checkParity(Message *msg);                   //check message parity (error detection)
-    char createParity(string payload, int SeqNum);    //creates the parity byte in the trailer
-    Message* createFrame(string text, int seqNum);    //creates the frame
+    char createParity(string payload, seq_nr SeqNum);    //creates the parity byte in the trailer
+    Message* createFrame(string text, seq_nr seqNum);    //creates the frame
     string byteStuffing(string text);                 //DONT USE (utility function)
     string byteDeStuffing(string payload);
-    Message* modification(Message*msg);
+    void inc(seq_nr& currentSeqNum);
+    void startTimer(seq_nr seqNum);
+    void stopTimer(seq_nr seqNum);
+    void modification(Message*msg);
 };
 
 #endif

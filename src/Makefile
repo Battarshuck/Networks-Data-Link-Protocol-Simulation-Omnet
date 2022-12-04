@@ -1,12 +1,12 @@
 #
-# OMNeT++/OMNEST Makefile for goBackN
+# OMNeT++/OMNEST Makefile for gobackn
 #
 # This file was generated with the command:
 #  opp_makemake -f --deep
 #
 
 # Name of target to be created (-o option)
-TARGET = goBackN$(D)$(EXE_SUFFIX)
+TARGET = gobackn$(D)$(EXE_SUFFIX)
 TARGET_DIR = .
 
 # User interface (uncomment one) (-u option)

@@ -31,6 +31,6 @@ packet Message {
    char trailer;
    int frameType;
    int ackNum;
-   bool messageType; // 0 -> coordinator message
+   int messageType; // 0 -> coordinator message
    					// 1 -> node message
 }
