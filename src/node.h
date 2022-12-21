@@ -38,15 +38,19 @@ class Node : public cSimpleModule
 {
     role myRole;
     double propagationDelay;
+    double LossProb;
     double timeout;
     int senderWindowSize;
     int receiverWindowSize = 1;
     seq_nr maxSeqNum;
+    seq_nr frameExpected=0;
+
+
 
     map<seq_nr, Message*> timerMessages;
     vector<pair<string, string>> data; //data.first -> error code e.g. 1011
                                        //data.second -> actual text
-
+    vector<string> recData;
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
@@ -57,10 +61,12 @@ class Node : public cSimpleModule
     Message* createFrame(string text, seq_nr seqNum);    //creates the frame
     string byteStuffing(string text);                 //DONT USE (utility function)
     string byteDeStuffing(string payload);
+
     void inc(seq_nr& currentSeqNum);
     void startTimer(seq_nr seqNum);
     void stopTimer(seq_nr seqNum);
     void modification(Message*msg);
+    void rec(Message*msg);
 };
 
 #endif

@@ -131,7 +131,7 @@ string Node::byteDeStuffing(string payload)
     }
     return message;
 }
-//**********************************************************
+//******************Create Error****************************************
 
 void Node::modification(Message*msg)
 {
@@ -157,8 +157,35 @@ void Node::modification(Message*msg)
 
     msg->setPayload(collect.c_str());
     }
-//*******************************************************
+//******************Receiver Function*************************************
+void Node::rec(Message*msg)
+{
+    if(msg->getSeqNum()==frameExpected)
+    {
+        if(checkParity(msg))
+        {
+            msg->setAckNum(frameExpected);
+            inc(frameExpected);
+            msg->setMessageType(ACK);
+            recData.push_back(msg->getPayload());
+        }
+        else
+        {
+            msg->setAckNum(frameExpected);
+            msg->setMessageType(NACK);
+        }
+        int Loss=int(uniform(0,100));
+        if(Loss>=LossProb)
+        {
+            string s =to_string(msg->getAckNum());
+            msg->setName(s.c_str());
+            sendDelayed(msg, propagationDelay, "out");
+        }
 
+    }
+
+
+}
 
 
 //*******************GO BACKN FUNCTIONS*********************
@@ -195,9 +222,11 @@ void Node::initialize()
     // TODO - Generated method body
     myRole = RECEIVER;
     propagationDelay = par("PD").doubleValue();
+    LossProb= par("LP").doubleValue();
     timeout = par("TO").doubleValue();
     senderWindowSize = par("windowSize").intValue();
     maxSeqNum = senderWindowSize;
+    frameExpected=0;
 }
 
 
@@ -213,6 +242,10 @@ void Node::handleMessage(cMessage *msg)
             readData();
         }
         scheduleAt(simTime()+2.0, msg);
+        if(myRole==SENDER)
+        {
+
+        }
 
     }
     else{
@@ -225,12 +258,14 @@ void Node::handleMessage(cMessage *msg)
 
             //**************************TEST***************************
             string text = data[0].second;
-            msg2 = createFrame(text, 1);
-            modification(msg2);
+            msg2 = createFrame(text, 0);
+            //modification(msg2);
             cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
             //******************************************************
 
             msg2->setName("My role is a sender");
+            sendDelayed(msg2, 2.0, "out");
+
         }else{
 
             //**********************TEST*******************
@@ -239,9 +274,10 @@ void Node::handleMessage(cMessage *msg)
             else
                 cout << "error detected"<<endl;
             //****************************************
+            msg2->setName("alooo");
 
-            msg2->setName("My role is a receiver");
+            rec(msg2);
+            //msg2->setName("My role is a receiver");
         }
-        sendDelayed(msg2, 2.0, "out");
     }
 }

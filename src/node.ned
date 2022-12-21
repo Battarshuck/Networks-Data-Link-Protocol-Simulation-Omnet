@@ -24,6 +24,7 @@ simple Node
         double PD;
         int windowSize = default(5);
         double TO = default(10.0);
+        double LP = default(10);
     gates:
         input in[];
         output out;
