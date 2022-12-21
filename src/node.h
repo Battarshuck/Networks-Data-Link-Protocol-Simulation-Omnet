@@ -65,6 +65,7 @@ class Node : public cSimpleModule
     string byteDeStuffing(string payload);
 
     void inc(seq_nr& currentSeqNum);
+    seq_nr dec(seq_nr lastAck);
     void startTimer(seq_nr seqNum);
     void stopTimer(seq_nr seqNum);
     void modification(Message*msg);

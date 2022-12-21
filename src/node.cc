@@ -161,6 +161,7 @@ void Node::modification(Message*msg)
 //******************Receiver Function*************************************
 void Node::rec(Message*msg)
 {
+    string type;
     if(msg->getSeqNum()==frameExpected)
     {
         if(checkParity(msg))
@@ -169,26 +170,42 @@ void Node::rec(Message*msg)
             inc(frameExpected);
             msg->setMessageType(ACK);
             recData.push_back(msg->getPayload());
-
+            type="ACK";
         }
         else
         {
             msg->setAckNum(frameExpected);
             msg->setMessageType(NACK);
+            type="NACK";
         }
         int Loss=int(uniform(0,100));
-
-
         double x = (double)simTime().dbl();
         if(Loss>=LossProb)
         {
             string s =to_string(msg->getAckNum());
             msg->setName(s.c_str());
             sendDelayed(msg, propagationDelay, "out");
-            logs.log_ControlFrame(to_string(x), to_string(getIndex()), "ACK", "0", 1);
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
         }
         else
-            logs.log_ControlFrame(to_string(x), to_string(getIndex()), "NACK", "0", 0);
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 1);
+    }
+    else
+    {
+        //send ack of the last received frame
+        msg->setAckNum(dec(frameExpected));
+        double x = (double)simTime().dbl();
+        msg->setMessageType(ACK);
+        int Loss=int(uniform(0,100));
+        if(Loss>=LossProb)
+                {
+        string s =to_string(msg->getAckNum());
+        msg->setName(s.c_str());
+        sendDelayed(msg, propagationDelay, "out");
+        logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
+                }
+        else
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 1);
 
     }
 
@@ -204,7 +221,15 @@ void Node::inc(seq_nr& currentSeqNum){
         currentSeqNum=0;
 }
 //**********************************************************
+seq_nr Node::dec(seq_nr lastAck)
+{
+    if(lastAck>0)
+        return lastAck-1;
+    else
+        return maxSeqNum;
 
+ }
+//**********************************************************
 void Node::startTimer(seq_nr seqNum){
     Message* timerMessage = new Message("TIMEOUT");
 
@@ -267,7 +292,7 @@ void Node::handleMessage(cMessage *msg)
             //**************************TEST***************************
             string text = data[0].second;
             msg2 = createFrame(text, 0);
-            //modification(msg2);
+            modification(msg2);
             cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
             //******************************************************
 
