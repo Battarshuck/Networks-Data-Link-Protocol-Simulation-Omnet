@@ -24,6 +24,7 @@
 #include "Message_m.h"
 #include <bitset>
 #include <map>
+#include "LogsGenerator.h"
 
 typedef int seq_nr;
 
@@ -36,6 +37,7 @@ using namespace std;
 
 class Node : public cSimpleModule
 {
+    LogsGenerator logs;
     role myRole;
     double propagationDelay;
     double LossProb;

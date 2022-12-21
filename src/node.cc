@@ -14,6 +14,7 @@
 // 
 
 #include "node.h"
+
 using namespace std;
 
 Define_Module(Node);
@@ -168,6 +169,7 @@ void Node::rec(Message*msg)
             inc(frameExpected);
             msg->setMessageType(ACK);
             recData.push_back(msg->getPayload());
+
         }
         else
         {
@@ -175,12 +177,18 @@ void Node::rec(Message*msg)
             msg->setMessageType(NACK);
         }
         int Loss=int(uniform(0,100));
+
+
+        double x = (double)simTime().dbl();
         if(Loss>=LossProb)
         {
             string s =to_string(msg->getAckNum());
             msg->setName(s.c_str());
             sendDelayed(msg, propagationDelay, "out");
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), "ACK", "0", 1);
         }
+        else
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), "NACK", "0", 0);
 
     }
 
