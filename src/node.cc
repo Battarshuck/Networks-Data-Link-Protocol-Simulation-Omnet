@@ -14,6 +14,7 @@
 // 
 
 #include "node.h"
+
 using namespace std;
 
 Define_Module(Node);
@@ -131,7 +132,7 @@ string Node::byteDeStuffing(string payload)
     }
     return message;
 }
-//**********************************************************
+//******************Create Error****************************************
 
 void Node::modification(Message*msg)
 {
@@ -156,9 +157,61 @@ void Node::modification(Message*msg)
     }
 
     msg->setPayload(collect.c_str());
- }
-//*******************************************************
 
+ }
+//******************Receiver Function*************************************
+void Node::rec(Message*msg)
+{
+    string type;
+    if(msg->getSeqNum()==frameExpected)
+    {
+        if(checkParity(msg))
+        {
+            msg->setAckNum(frameExpected);
+            inc(frameExpected);
+            msg->setMessageType(ACK);
+            recData.push_back(msg->getPayload());
+            type="ACK";
+        }
+        else
+        {
+            msg->setAckNum(frameExpected);
+            msg->setMessageType(NACK);
+            type="NACK";
+        }
+        int Loss=int(uniform(0,100));
+        double x = (double)simTime().dbl();
+        if(Loss>=LossProb)
+        {
+            string s =to_string(msg->getAckNum());
+            msg->setName(s.c_str());
+            sendDelayed(msg, propagationDelay, "out");
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
+        }
+        else
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 1);
+    }
+    else
+    {
+        //send ack of the last received frame
+        msg->setAckNum(dec(frameExpected));
+        double x = (double)simTime().dbl();
+        msg->setMessageType(ACK);
+        int Loss=int(uniform(0,100));
+        if(Loss>=LossProb)
+                {
+        string s =to_string(msg->getAckNum());
+        msg->setName(s.c_str());
+        sendDelayed(msg, propagationDelay, "out");
+        logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
+                }
+        else
+            logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 1);
+
+    }
+
+
+}
 
 
 //*******************GO BACKN FUNCTIONS*********************
@@ -169,7 +222,15 @@ void Node::inc(seq_nr& currentSeqNum){
         currentSeqNum=0;
 }
 //**********************************************************
+seq_nr Node::dec(seq_nr lastAck)
+{
+    if(lastAck>0)
+        return lastAck-1;
+    else
+        return maxSeqNum;
 
+ }
+//**********************************************************
 void Node::startTimer(seq_nr seqNum){
     Message* timerMessage = new Message("TIMEOUT");
 
@@ -315,6 +376,10 @@ void Node::initialize()
     // TODO - Generated method body
     myRole = RECEIVER;
     processingTime = par("PT").doubleValue();
+
+    propagationDelay = par("PD").doubleValue();
+    LossProb= par("LP").doubleValue();
+
     timeout = par("TO").doubleValue();
     errorDelay = par("ED").doubleValue();
     duplicationDelay = par("DD").doubleValue();
@@ -325,6 +390,8 @@ void Node::initialize()
     ackExpected = 0;
     nextFrameToSend = 0;
     isNetworkLayerReady = true;
+    frameExpected=0;
+
 }
 
 
@@ -340,6 +407,13 @@ void Node::handleMessage(cMessage *msg)
             readData();
 
         }
+
+        scheduleAt(simTime()+2.0, msg);
+        if(myRole==SENDER)
+        {
+
+        }
+
     }
     if(myRole == SENDER){
         cout << msg->isSelfMessage() << endl;
@@ -350,15 +424,40 @@ void Node::handleMessage(cMessage *msg)
 
 //
 
-        for (auto const& x : timerMessages)
-        {
-            std::cout << x.first  // string (key)
 
-                      << std::endl;
-        }
-        cout << "==============================" << endl;
-        msg2->setFrameType(ACK);
-        sendDelayed(msg2, 1.0, "out");
+        // for (auto const& x : timerMessages)
+        // {
+            // std::cout << x.first  // string (key)
+
+                      // << std::endl;
+        // }
+        // cout << "==============================" << endl;
+        // msg2->setFrameType(ACK);
+        // sendDelayed(msg2, 1.0, "out");
+
+            // //**************************TEST***************************
+            // string text = data[0].second;
+            // msg2 = createFrame(text, 0);
+            // modification(msg2);
+            // cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
+            // //******************************************************
+
+            // msg2->setName("My role is a sender");
+            // sendDelayed(msg2, 2.0, "out");
+
+        // }else{
+
+            // //**********************TEST*******************
+            // if(checkParity(msg2))
+                // cout << "correct" << endl;
+            // else
+                // cout << "error detected"<<endl;
+            // //****************************************
+            // msg2->setName("alooo");
+
+            // rec(msg2);
+            // //msg2->setName("My role is a receiver");
+        // }
     }
 
 

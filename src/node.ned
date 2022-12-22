@@ -27,6 +27,8 @@ simple Node
         double ED = default(4.0);
         double TD = default(1.0);
         double DD = default(0.1);
+        double LP = default(10);
+
     gates:
         input in[];
         output out;

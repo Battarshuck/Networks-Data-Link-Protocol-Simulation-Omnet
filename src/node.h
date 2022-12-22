@@ -24,6 +24,7 @@
 #include "Message_m.h"
 #include <bitset>
 #include <map>
+#include "LogsGenerator.h"
 
 typedef int seq_nr;
 
@@ -36,12 +37,19 @@ using namespace std;
 
 class Node : public cSimpleModule
 {
+    LogsGenerator logs;
     role myRole;
+
     double processingTime;
+
+    double propagationDelay;
+    double LossProb;
+
     double timeout;
     int senderWindowSize;
     int receiverWindowSize = 1;
     seq_nr maxSeqNum;
+
     seq_nr currentDataIndex;
     seq_nr nextFrameToSend;
     seq_nr ackExpected;
@@ -52,10 +60,18 @@ class Node : public cSimpleModule
     double duplicationDelay;
     double transmissionDelay;
 
+    seq_nr frameExpected=0;
+
+
+
     map<seq_nr, Message*> timerMessages;
     vector<pair<string, string>> data; //data.first -> error code e.g. 1011
                                        //data.second -> actual text
+
     vector<Message*> senderMsgBuffer;
+
+
+    vector<string> recData;
 
   protected:
     virtual void initialize();
@@ -67,12 +83,17 @@ class Node : public cSimpleModule
     Message* createFrame(string text, seq_nr seqNum);    //creates the frame
     string byteStuffing(string text);                 //DONT USE (utility function)
     string byteDeStuffing(string payload);
+
     void inc(seq_nr& currentSeqNum);
+    seq_nr dec(seq_nr lastAck);
     void startTimer(seq_nr seqNum);
     void stopTimer(seq_nr seqNum);
     void modification(Message*msg);
+
     void sender(Message*msg, bool isSelfMessage);
     ErrorType checkErrorType(string errorString, Message* msg);
+    void rec(Message*msg);
+
 };
 
 #endif
