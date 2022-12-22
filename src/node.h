@@ -37,15 +37,25 @@ using namespace std;
 class Node : public cSimpleModule
 {
     role myRole;
-    double propagationDelay;
+    double processingTime;
     double timeout;
     int senderWindowSize;
     int receiverWindowSize = 1;
     seq_nr maxSeqNum;
+    seq_nr currentDataIndex;
+    seq_nr nextFrameToSend;
+    seq_nr ackExpected;
+    bool isNetworkLayerReady;
+
+
+    double errorDelay;
+    double duplicationDelay;
+    double transmissionDelay;
 
     map<seq_nr, Message*> timerMessages;
     vector<pair<string, string>> data; //data.first -> error code e.g. 1011
                                        //data.second -> actual text
+    vector<Message*> senderMsgBuffer;
 
   protected:
     virtual void initialize();
@@ -61,6 +71,8 @@ class Node : public cSimpleModule
     void startTimer(seq_nr seqNum);
     void stopTimer(seq_nr seqNum);
     void modification(Message*msg);
+    void sender(Message*msg, bool isSelfMessage);
+    ErrorType checkErrorType(string errorString, Message* msg);
 };
 
 #endif

@@ -1,4 +1,12 @@
 0000 h
-1010 A flower, sometimes
 0000 hello
 1001 holaaa
+1010 A flower, sometimes
+0111 hi
+0111 hi
+0000 h
+0000 hello
+1001 holaaa
+1010 A flower, sometimes
+0111 hi
+0111 hi

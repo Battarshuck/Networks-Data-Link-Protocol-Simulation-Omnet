@@ -185,6 +185,7 @@ Message::Message(const char *name, short kind) : ::omnetpp::cPacket(name,kind)
     this->trailer = 0;
     this->frameType = 0;
     this->ackNum = 0;
+    this->errorType = 0;
     this->messageType = 0;
 }
 
@@ -212,6 +213,7 @@ void Message::copy(const Message& other)
     this->trailer = other.trailer;
     this->frameType = other.frameType;
     this->ackNum = other.ackNum;
+    this->errorType = other.errorType;
     this->messageType = other.messageType;
 }
 
@@ -223,6 +225,7 @@ void Message::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->trailer);
     doParsimPacking(b,this->frameType);
     doParsimPacking(b,this->ackNum);
+    doParsimPacking(b,this->errorType);
     doParsimPacking(b,this->messageType);
 }
 
@@ -234,6 +237,7 @@ void Message::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->trailer);
     doParsimUnpacking(b,this->frameType);
     doParsimUnpacking(b,this->ackNum);
+    doParsimUnpacking(b,this->errorType);
     doParsimUnpacking(b,this->messageType);
 }
 
@@ -285,6 +289,16 @@ int Message::getAckNum() const
 void Message::setAckNum(int ackNum)
 {
     this->ackNum = ackNum;
+}
+
+int Message::getErrorType() const
+{
+    return this->errorType;
+}
+
+void Message::setErrorType(int errorType)
+{
+    this->errorType = errorType;
 }
 
 int Message::getMessageType() const
@@ -362,7 +376,7 @@ const char *MessageDescriptor::getProperty(const char *propertyname) const
 int MessageDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 6+basedesc->getFieldCount() : 6;
+    return basedesc ? 7+basedesc->getFieldCount() : 7;
 }
 
 unsigned int MessageDescriptor::getFieldTypeFlags(int field) const
@@ -380,8 +394,9 @@ unsigned int MessageDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<6) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<7) ? fieldTypeFlags[field] : 0;
 }
 
 const char *MessageDescriptor::getFieldName(int field) const
@@ -398,9 +413,10 @@ const char *MessageDescriptor::getFieldName(int field) const
         "trailer",
         "frameType",
         "ackNum",
+        "errorType",
         "messageType",
     };
-    return (field>=0 && field<6) ? fieldNames[field] : nullptr;
+    return (field>=0 && field<7) ? fieldNames[field] : nullptr;
 }
 
 int MessageDescriptor::findField(const char *fieldName) const
@@ -412,7 +428,8 @@ int MessageDescriptor::findField(const char *fieldName) const
     if (fieldName[0]=='t' && strcmp(fieldName, "trailer")==0) return base+2;
     if (fieldName[0]=='f' && strcmp(fieldName, "frameType")==0) return base+3;
     if (fieldName[0]=='a' && strcmp(fieldName, "ackNum")==0) return base+4;
-    if (fieldName[0]=='m' && strcmp(fieldName, "messageType")==0) return base+5;
+    if (fieldName[0]=='e' && strcmp(fieldName, "errorType")==0) return base+5;
+    if (fieldName[0]=='m' && strcmp(fieldName, "messageType")==0) return base+6;
     return basedesc ? basedesc->findField(fieldName) : -1;
 }
 
@@ -431,8 +448,9 @@ const char *MessageDescriptor::getFieldTypeString(int field) const
         "int",
         "int",
         "int",
+        "int",
     };
-    return (field>=0 && field<6) ? fieldTypeStrings[field] : nullptr;
+    return (field>=0 && field<7) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **MessageDescriptor::getFieldPropertyNames(int field) const
@@ -504,7 +522,8 @@ std::string MessageDescriptor::getFieldValueAsString(void *object, int field, in
         case 2: return long2string(pp->getTrailer());
         case 3: return long2string(pp->getFrameType());
         case 4: return long2string(pp->getAckNum());
-        case 5: return long2string(pp->getMessageType());
+        case 5: return long2string(pp->getErrorType());
+        case 6: return long2string(pp->getMessageType());
         default: return "";
     }
 }
@@ -524,7 +543,8 @@ bool MessageDescriptor::setFieldValueAsString(void *object, int field, int i, co
         case 2: pp->setTrailer(string2long(value)); return true;
         case 3: pp->setFrameType(string2long(value)); return true;
         case 4: pp->setAckNum(string2long(value)); return true;
-        case 5: pp->setMessageType(string2long(value)); return true;
+        case 5: pp->setErrorType(string2long(value)); return true;
+        case 6: pp->setMessageType(string2long(value)); return true;
         default: return false;
     }
 }

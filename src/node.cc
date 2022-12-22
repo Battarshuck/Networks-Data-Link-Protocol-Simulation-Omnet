@@ -81,7 +81,7 @@ char Node::createParity(string payload, seq_nr seqNum)
         parity = parity ^ bitset<8>(payload[i]);
     }
 
-    cout << parity.to_string()<<endl;
+//    cout << parity.to_string()<<endl;
     return (char)parity.to_ulong();
 
 }
@@ -156,7 +156,7 @@ void Node::modification(Message*msg)
     }
 
     msg->setPayload(collect.c_str());
-    }
+ }
 //*******************************************************
 
 
@@ -188,16 +188,143 @@ void Node::stopTimer(seq_nr seqNum){
 
 //**********************************************************
 
+ErrorType Node::checkErrorType(string errorString, Message* msg){
+    if(errorString[1]=='1')
+        return LOSS;
+    if(errorString[0] == '1')
+        modification(msg);
+    if(errorString[2] == '1' && errorString[3] == '1')
+        return DELAYED_AND_DUPLICATED;
+    if(errorString[2] == '1')
+        return DUPLICATED;
+    if(errorString[3] == '1')
+        return DELAYED;
+    return CORRECT;
+}
+
+//**********************************************************
+
+void Node::sender(Message*msg, bool isSelfMessage){
+//    while(true){
+        if(currentDataIndex==data.size())
+            return;
+
+        if(isSelfMessage)
+        {
+            if(msg->getMessageType() == TIMEOUT_MSG)
+            {
+
+            }
+            else
+            {
+                string s = msg->getPayload();
+                cout << s << endl << msg->getErrorType() << endl;
+                cout << "-------------------------------------------------------------" << endl;
+                if(msg->getErrorType() == DELAYED)
+                {
+                    msg->setErrorType(CORRECT);
+                    sendDelayed(msg, errorDelay+transmissionDelay, "out");
+                }
+                else if(msg->getErrorType() == CORRECT)
+                {
+                    msg->setErrorType(CORRECT);
+                    sendDelayed(msg, transmissionDelay, "out");
+                }
+
+            }
+
+        }
+        else
+        {
+            if(msg->getFrameType() == ACK)
+            {
+//                stopTimer(msg->getSeqNum());
+                senderMsgBuffer.erase(senderMsgBuffer.begin());
+
+            }
+            else if(msg->getFrameType() == NACK)
+            {
+
+            }
+            else
+            {
+                cout << "HENA" << endl;
+
+            }
+
+        }
+
+        while(senderMsgBuffer.size() < senderWindowSize)
+        {
+            msg = createFrame(data[currentDataIndex].second, nextFrameToSend);
+            // CHECK TYPES OF ERRORS
+            senderMsgBuffer.push_back(msg); // Put it into buffer before modification
+            ErrorType typesOfError= checkErrorType(data[currentDataIndex].first, msg);
+            startTimer(nextFrameToSend);
+            currentDataIndex++;
+            inc(nextFrameToSend);
+            if(typesOfError == LOSS)
+            {
+                cout << "LOSS" << endl;
+                msg->setErrorType(LOSS);
+                scheduleAt(simTime()+processingTime, msg);
+            }
+            else if(typesOfError == DELAYED)
+            {
+                cout << "DELAYED" << endl;
+                msg->setErrorType(DELAYED);
+                scheduleAt(simTime()+processingTime, msg);
+            }
+            else if(typesOfError == DELAYED_AND_DUPLICATED)
+            {
+                cout << "DELAYED_AND_DUPLICATED" << endl;
+                Message* msgDup = new Message(*msg);
+                cout << "ANA MSG DUB" << endl << "----------------------" << endl << msgDup->getPayload() << endl << "---------------" << endl;
+                msg->setErrorType(DELAYED);
+                msgDup->setErrorType(DELAYED);
+                scheduleAt(simTime()+processingTime, msg);
+                scheduleAt(simTime()+processingTime+duplicationDelay, msgDup);
+            }
+            else if(typesOfError == DUPLICATED)
+            {
+                cout << "DUPLICATED" << endl;
+                Message* msgDup = new Message(*msg);
+                cout << "ANA MSG DUB" << endl << "----------------------" << endl << msgDup->getPayload() << endl << "---------------" << endl;
+                msgDup->setErrorType(CORRECT);
+                msg->setErrorType(CORRECT);
+                scheduleAt(simTime()+processingTime, msg);
+                scheduleAt(simTime()+processingTime+duplicationDelay, msgDup);
+            }
+            else if(typesOfError == CORRECT)
+            {
+                cout << "CORRECT" << endl;
+                msg->setErrorType(CORRECT);
+                scheduleAt(simTime()+processingTime, msg);
+            }
+
+        }
+
+//    }
+
+}
+
 //**********************************************************
 
 void Node::initialize()
 {
     // TODO - Generated method body
     myRole = RECEIVER;
-    propagationDelay = par("PD").doubleValue();
+    processingTime = par("PT").doubleValue();
     timeout = par("TO").doubleValue();
+    errorDelay = par("ED").doubleValue();
+    duplicationDelay = par("DD").doubleValue();
+    transmissionDelay = par("TD").doubleValue();
     senderWindowSize = par("windowSize").intValue();
     maxSeqNum = senderWindowSize;
+    currentDataIndex = 0;
+    ackExpected = 0;
+    nextFrameToSend = 0;
+    isNetworkLayerReady = true;
 }
 
 
@@ -211,37 +338,58 @@ void Node::handleMessage(cMessage *msg)
         if(msg2->getMessageType() == COORD_MSG && stoi(msg2->getPayload()) == getIndex()){
             myRole = SENDER;
             readData();
+
         }
-        scheduleAt(simTime()+2.0, msg);
-
     }
-    else{
+    if(myRole == SENDER){
+        cout << msg->isSelfMessage() << endl;
+        sender(msg2,msg->isSelfMessage());
+    }else{
+        cout << "ANA RECEIVER" << endl;
+        cout << msg2->getSeqNum() << endl;
 
-        cout << "----------------------------" << endl;
-        cout<< "Sending at " << (double)(simTime().dbl()) << endl;
-        cout << "----------------------------" << endl;
-        msg2->setMessageType(NORMAL_MSG);
-        if(myRole == SENDER){
+//
 
-            //**************************TEST***************************
-            string text = data[0].second;
-            msg2 = createFrame(text, 1);
-            modification(msg2);
-            cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
-            //******************************************************
+        for (auto const& x : timerMessages)
+        {
+            std::cout << x.first  // string (key)
 
-            msg2->setName("My role is a sender");
-        }else{
-
-            //**********************TEST*******************
-            if(checkParity(msg2))
-                cout << "correct" << endl;
-            else
-                cout << "error detected"<<endl;
-            //****************************************
-
-            msg2->setName("My role is a receiver");
+                      << std::endl;
         }
-        sendDelayed(msg2, 2.0, "out");
+        cout << "==============================" << endl;
+        msg2->setFrameType(ACK);
+        sendDelayed(msg2, 1.0, "out");
     }
+
+
+
+//    else{
+//
+//        cout << "----------------------------" << endl;
+//        cout<< "Sending at " << (double)(simTime().dbl()) << endl;
+//        cout << "----------------------------" << endl;
+//        msg2->setMessageType(NORMAL_MSG);
+//        if(myRole == SENDER){
+//
+//            //**************************TEST***************************
+//            string text = data[0].second;
+//            msg2 = createFrame(text, 1);
+//            modification(msg2);
+//            cout<< msg2->getSeqNum()<<" "<<msg2->getPayload() << " "<<msg2->getTrailer()<<endl;
+//            //******************************************************
+//
+//            msg2->setName("My role is a sender");
+//        }else{
+//
+//            //**********************TEST*******************
+//            if(checkParity(msg2))
+//                cout << "correct" << endl;
+//            else
+//                cout << "error detected"<<endl;
+//            //****************************************
+//
+//            msg2->setName("My role is a receiver");
+//        }
+//        sendDelayed(msg2, 2.0, "out");
+//    }
 }

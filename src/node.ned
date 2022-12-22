@@ -21,9 +21,12 @@ package gobackn;
 simple Node
 {
     parameters:
-        double PD;
+        double PT = default(0.5);
         int windowSize = default(5);
         double TO = default(10.0);
+        double ED = default(4.0);
+        double TD = default(1.0);
+        double DD = default(0.1);
     gates:
         input in[];
         output out;

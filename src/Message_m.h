@@ -31,6 +31,7 @@
  *     char trailer;
  *     int frameType;
  *     int ackNum;
+ *     int errorType;
  *     int messageType; // 0 -> coordinator message
  *    					// 1 -> node message
  * }
@@ -44,6 +45,7 @@ class Message : public ::omnetpp::cPacket
     char trailer;
     int frameType;
     int ackNum;
+    int errorType;
     int messageType;
 
   private:
@@ -73,6 +75,8 @@ class Message : public ::omnetpp::cPacket
     virtual void setFrameType(int frameType);
     virtual int getAckNum() const;
     virtual void setAckNum(int ackNum);
+    virtual int getErrorType() const;
+    virtual void setErrorType(int errorType);
     virtual int getMessageType() const;
     virtual void setMessageType(int messageType);
 };

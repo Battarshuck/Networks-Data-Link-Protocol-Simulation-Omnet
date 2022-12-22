@@ -15,3 +15,11 @@ enum frameType{
     ACK,
     NACK
 };
+
+enum ErrorType{
+    LOSS,
+    DELAYED,
+    DUPLICATED,
+    DELAYED_AND_DUPLICATED,
+    CORRECT
+};
