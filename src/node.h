@@ -42,7 +42,6 @@ class Node : public cSimpleModule
 
     double processingTime;
 
-    double propagationDelay;
     double LossProb;
 
     double timeout;
@@ -69,7 +68,7 @@ class Node : public cSimpleModule
                                        //data.second -> actual text
 
     vector<Message*> senderMsgBuffer;
-
+    vector<ErrorType> senderMsgErrorBuffer;
 
     vector<string> recData;
 
@@ -93,6 +92,9 @@ class Node : public cSimpleModule
     void sender(Message*msg, bool isSelfMessage);
     ErrorType checkErrorType(string errorString, Message* msg);
     void rec(Message*msg);
+    void resendBuffer();
+    void handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg);
+    void updateMessageStateInBuffer(seq_nr seqNum);
 
 };
 

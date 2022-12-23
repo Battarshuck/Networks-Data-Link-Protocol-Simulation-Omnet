@@ -169,14 +169,14 @@ void Node::rec(Message*msg)
         {
             msg->setAckNum(frameExpected);
             inc(frameExpected);
-            msg->setMessageType(ACK);
+            msg->setFrameType(ACK);
             recData.push_back(msg->getPayload());
             type="ACK";
         }
         else
         {
             msg->setAckNum(frameExpected);
-            msg->setMessageType(NACK);
+            msg->setFrameType(NACK);
             type="NACK";
         }
         int Loss=int(uniform(0,100));
@@ -185,7 +185,7 @@ void Node::rec(Message*msg)
         {
             string s =to_string(msg->getAckNum());
             msg->setName(s.c_str());
-            sendDelayed(msg, propagationDelay, "out");
+            sendDelayed(msg, transmissionDelay, "out");
             logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
         }
         else
@@ -196,13 +196,13 @@ void Node::rec(Message*msg)
         //send ack of the last received frame
         msg->setAckNum(dec(frameExpected));
         double x = (double)simTime().dbl();
-        msg->setMessageType(ACK);
+        msg->setFrameType(ACK);
         int Loss=int(uniform(0,100));
         if(Loss>=LossProb)
                 {
         string s =to_string(msg->getAckNum());
         msg->setName(s.c_str());
-        sendDelayed(msg, propagationDelay, "out");
+        sendDelayed(msg, transmissionDelay, "out");
         logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
                 }
         else
@@ -244,7 +244,10 @@ void Node::startTimer(seq_nr seqNum){
 
 //**********************************************************
 void Node::stopTimer(seq_nr seqNum){
-    cancelAndDelete(timerMessages[seqNum]);
+    if(timerMessages[seqNum]){
+        cancelAndDelete(timerMessages[seqNum]);
+        timerMessages.erase(seqNum);
+    }
 }
 
 //**********************************************************
@@ -264,9 +267,81 @@ ErrorType Node::checkErrorType(string errorString, Message* msg){
 }
 
 //**********************************************************
+void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg){
+    if(typesOfError == LOSS)
+    {
+        cout << "LOSS" << endl;
+        msg->setErrorType(LOSS);
+        scheduleAt(simTime()+processingTime*currentMsg, msg);
+    }
+    else if(typesOfError == DELAYED)
+    {
+        cout << "DELAYED" << endl;
+        msg->setErrorType(DELAYED);
+        scheduleAt(simTime()+processingTime*currentMsg, msg);
+    }
+    else if(typesOfError == DELAYED_AND_DUPLICATED)
+    {
+        cout << "DELAYED_AND_DUPLICATED" << endl;
+        Message* msgDup = new Message(*msg);
+        msg->setErrorType(DELAYED);
+        msgDup->setErrorType(DELAYED);
+        scheduleAt(simTime()+processingTime*currentMsg, msg);
+        scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
+    }
+    else if(typesOfError == DUPLICATED)
+    {
+        cout << "DUPLICATED" << endl;
+        Message* msgDup = new Message(*msg);
+        msgDup->setErrorType(CORRECT);
+        msg->setErrorType(CORRECT);
+        scheduleAt(simTime()+processingTime*currentMsg, msg);
+        scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
+    }
+    else if(typesOfError == CORRECT)
+    {
+        cout << "CORRECT" << endl;
+        msg->setErrorType(CORRECT);
+        scheduleAt(simTime()+processingTime*currentMsg, msg);
+    }
+
+}
+
+//**********************************************************
+
+void Node::resendBuffer(){
+    double currentMsg = 1.0;
+
+    senderMsgBuffer[0]->setMessageState(WAITING);
+    stopTimer(senderMsgBuffer[0]->getSeqNum());
+    scheduleAt(simTime()+processingTime*currentMsg, senderMsgBuffer[0]);
+    cout << "gwa el resenddddddd"<< endl;
+    for(int i = 1; i < senderMsgBuffer.size(); ++i){
+        if(senderMsgBuffer[i]->getMessageState() == WAITING){
+            return;
+        }
+        stopTimer(senderMsgBuffer[i]->getSeqNum());
+        senderMsgBuffer[i]->setMessageState(WAITING);
+        cout << "gwa el resenddddddd"<< endl;
+        currentMsg++;
+        handlingMsgErrors(senderMsgBuffer[i], senderMsgErrorBuffer[i], currentMsg);
+    }
+
+}
+
+void Node::updateMessageStateInBuffer(seq_nr seqNum){
+    for(int i = 0; i < senderMsgBuffer.size(); ++i){
+        if(senderMsgBuffer[i]->getSeqNum() == seqNum){
+            cout << "LA@ET Haga" << endl;
+            senderMsgBuffer[i]->setMessageState(SENT);
+            return;
+        }
+    }
+}
+
 
 void Node::sender(Message*msg, bool isSelfMessage){
-//    while(true){
+
         if(currentDataIndex==data.size())
             return;
 
@@ -274,20 +349,26 @@ void Node::sender(Message*msg, bool isSelfMessage){
         {
             if(msg->getMessageType() == TIMEOUT_MSG)
             {
-
+                resendBuffer();
             }
             else
             {
+
                 string s = msg->getPayload();
-                cout << s << endl << msg->getErrorType() << endl;
-                cout << "-------------------------------------------------------------" << endl;
+                updateMessageStateInBuffer(msg->getSeqNum());
+                startTimer(msg->getSeqNum());
+
                 if(msg->getErrorType() == DELAYED)
                 {
+                    cout << "ana ha send  msg delayed" << endl;
+                    cout<< "Sending at " << (double)(simTime().dbl()) << endl;
                     msg->setErrorType(CORRECT);
                     sendDelayed(msg, errorDelay+transmissionDelay, "out");
                 }
                 else if(msg->getErrorType() == CORRECT)
                 {
+                    cout << "ana ha send  msg correct" << endl;
+                    cout<< "Sending at " << (double)(simTime().dbl()) << endl;
                     msg->setErrorType(CORRECT);
                     sendDelayed(msg, transmissionDelay, "out");
                 }
@@ -299,73 +380,42 @@ void Node::sender(Message*msg, bool isSelfMessage){
         {
             if(msg->getFrameType() == ACK)
             {
-//                stopTimer(msg->getSeqNum());
-                senderMsgBuffer.erase(senderMsgBuffer.begin());
+                stopTimer(msg->getSeqNum());
+                if(msg->getAckNum() == ackExpected){
+                    cout << "INSIDE ACK" << endl;
+                    cancelAndDelete(msg);
+                    cancelAndDelete(senderMsgBuffer[0]);
+                    senderMsgBuffer.erase(senderMsgBuffer.begin());
+                    senderMsgErrorBuffer.erase(senderMsgErrorBuffer.begin());
+                    inc(ackExpected);
+                }
+
 
             }
             else if(msg->getFrameType() == NACK)
             {
-
+                cancelAndDelete(msg);
+                resendBuffer();
             }
-            else
-            {
-                cout << "HENA" << endl;
-
-            }
-
         }
 
+        double currentMsg = 0.0;
         while(senderMsgBuffer.size() < senderWindowSize)
         {
             msg = createFrame(data[currentDataIndex].second, nextFrameToSend);
+            currentMsg++;
+            msg->setMessageState(WAITING);
+            cout << "ana msg rakam " << currentMsg << endl;
             // CHECK TYPES OF ERRORS
-            senderMsgBuffer.push_back(msg); // Put it into buffer before modification
+            Message* newMsg = new Message(*msg);
+            senderMsgBuffer.push_back(newMsg); // Put it into buffer before modification
             ErrorType typesOfError= checkErrorType(data[currentDataIndex].first, msg);
-            startTimer(nextFrameToSend);
+            senderMsgErrorBuffer.push_back(typesOfError);
+//            startTimer(nextFrameToSend);
             currentDataIndex++;
             inc(nextFrameToSend);
-            if(typesOfError == LOSS)
-            {
-                cout << "LOSS" << endl;
-                msg->setErrorType(LOSS);
-                scheduleAt(simTime()+processingTime, msg);
-            }
-            else if(typesOfError == DELAYED)
-            {
-                cout << "DELAYED" << endl;
-                msg->setErrorType(DELAYED);
-                scheduleAt(simTime()+processingTime, msg);
-            }
-            else if(typesOfError == DELAYED_AND_DUPLICATED)
-            {
-                cout << "DELAYED_AND_DUPLICATED" << endl;
-                Message* msgDup = new Message(*msg);
-                cout << "ANA MSG DUB" << endl << "----------------------" << endl << msgDup->getPayload() << endl << "---------------" << endl;
-                msg->setErrorType(DELAYED);
-                msgDup->setErrorType(DELAYED);
-                scheduleAt(simTime()+processingTime, msg);
-                scheduleAt(simTime()+processingTime+duplicationDelay, msgDup);
-            }
-            else if(typesOfError == DUPLICATED)
-            {
-                cout << "DUPLICATED" << endl;
-                Message* msgDup = new Message(*msg);
-                cout << "ANA MSG DUB" << endl << "----------------------" << endl << msgDup->getPayload() << endl << "---------------" << endl;
-                msgDup->setErrorType(CORRECT);
-                msg->setErrorType(CORRECT);
-                scheduleAt(simTime()+processingTime, msg);
-                scheduleAt(simTime()+processingTime+duplicationDelay, msgDup);
-            }
-            else if(typesOfError == CORRECT)
-            {
-                cout << "CORRECT" << endl;
-                msg->setErrorType(CORRECT);
-                scheduleAt(simTime()+processingTime, msg);
-            }
-
+            handlingMsgErrors(msg, typesOfError, currentMsg);
         }
-
-//    }
 
 }
 
@@ -377,7 +427,6 @@ void Node::initialize()
     myRole = RECEIVER;
     processingTime = par("PT").doubleValue();
 
-    propagationDelay = par("PD").doubleValue();
     LossProb= par("LP").doubleValue();
 
     timeout = par("TO").doubleValue();
@@ -408,19 +457,19 @@ void Node::handleMessage(cMessage *msg)
 
         }
 
-        scheduleAt(simTime()+2.0, msg);
-        if(myRole==SENDER)
-        {
-
-        }
+//        scheduleAt(simTime()+2.0, msg);
+//        if(myRole==SENDER)
+//        {
+//
+//        }
 
     }
     if(myRole == SENDER){
-        cout << msg->isSelfMessage() << endl;
         sender(msg2,msg->isSelfMessage());
-    }else{
-        cout << "ANA RECEIVER" << endl;
-        cout << msg2->getSeqNum() << endl;
+    }else if(myRole == RECEIVER){
+        cout<< "Receiving at " << (double)(simTime().dbl()) << endl;
+        rec(msg2);
+    }
 
 //
 
@@ -458,7 +507,7 @@ void Node::handleMessage(cMessage *msg)
             // rec(msg2);
             // //msg2->setName("My role is a receiver");
         // }
-    }
+//    }
 
 
 

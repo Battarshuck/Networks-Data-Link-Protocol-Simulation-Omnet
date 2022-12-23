@@ -23,3 +23,8 @@ enum ErrorType{
     DELAYED_AND_DUPLICATED,
     CORRECT
 };
+
+enum MessageState{
+    WAITING,
+    SENT
+};
