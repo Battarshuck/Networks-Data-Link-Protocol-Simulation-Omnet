@@ -41,8 +41,5 @@ void Coordinator::handleMessage(cMessage *msg)
     Message* msg2 = check_and_cast<Message*>(msg);
     msg2->setMessageType(COORD_MSG);
     send(msg, "out", stoi(msg2->getPayload()));
-    cout << "----------------------------" << endl;
-    cout << "Sending from coordinator to node "<< stoi(msg2->getPayload()) << " at " << (double)(simTime().dbl()) << endl;
-    cout << "----------------------------" << endl;
     // TODO - Generated method body
 }
