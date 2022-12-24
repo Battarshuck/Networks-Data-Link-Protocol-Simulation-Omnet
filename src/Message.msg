@@ -32,6 +32,7 @@ packet Message {
    int frameType;
    int ackNum;
    int errorType;
+   string errorString;
    int messageState;
    int messageType; // 0 -> coordinator message
    					// 1 -> node message

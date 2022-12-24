@@ -10,21 +10,22 @@
 
 LogsGenerator::LogsGenerator() {
     // TODO Auto-generated constructor stub
-    logFile.open("output.txt");
+//    logFile.open("output.txt");
+    logFile = new ofstream("output.txt");
 }
 
 LogsGenerator::~LogsGenerator() {
     // TODO Auto-generated destructor stub
-    logFile.close();
+    logFile->close();
 }
 
 void LogsGenerator::log_ReadLine(string startTime, string id, string errorCode)
 {
-    logFile << "At time " << startTime <<", Node["<<id<<"] Introducing channel error with code = [" << errorCode <<"]." << endl;
+    *logFile << "At time " << startTime <<", Node["<<id<<"] Introducing channel error with code = [" << errorCode <<"]." << endl;
 }
 
 void LogsGenerator::log_BeforeTransmission(string startTime, string id, string seqNum , string payload, char trailer,
-        string modified, int lost, string duplicate, string delay)
+        char modified, int lost, char duplicate, char delay)
 {
     bitset<8> temp(trailer);
     string myLost;
@@ -34,14 +35,14 @@ void LogsGenerator::log_BeforeTransmission(string startTime, string id, string s
         myLost = "Yes";
 
 
-    logFile << "At time "<<startTime<<" Node["<<id<<"] [sent] frame with seq_Num["<<seqNum<<"] and Payload["<<payload<<"]"
-            <<"and Trailer["<<temp.to_string()<<"] Modified ["<< modified <<"], Lost ["<<myLost<<"] Duplicate ["<<duplicate<<"] Delay"
-            << delay << endl;
+    *logFile << "At time "<<startTime<<" Node["<<id<<"] [sent] frame with seq_Num["<<seqNum<<"] and Payload["<<payload<<"]"
+            <<"and Trailer["<<temp.to_string()<<"] Modified ["<< modified <<"], Lost ["<<myLost<<"] Duplicate ["<<duplicate<<"] Delay ["
+            << delay << "]" << endl;
 }
 
 void LogsGenerator::log_TimeOut(string startTime, string id, string seqNum)
 {
-    logFile << "Time out event at time "<<startTime<<", at Node["<<id<<"] for frame with seq_num = "<<seqNum<<endl;
+    *logFile << "Time out event at time "<<startTime<<", at Node["<<id<<"] for frame with seq_num = "<<seqNum<<endl;
 }
 
 void LogsGenerator::log_ControlFrame(string startTime, string id, string type, string seqNum, int loss)
@@ -52,7 +53,7 @@ void LogsGenerator::log_ControlFrame(string startTime, string id, string type, s
         else
             myLoss = "Yes";
 
-    logFile << "At time "<< startTime <<", Node["<<id<<"] sending "<< type << " with number["<<seqNum<<"], loss ["<< myLoss <<"]"<<endl;
+    *logFile << "At time "<< startTime <<", Node["<<id<<"] sending "<< type << " with number["<<seqNum<<"], loss ["<< myLoss <<"]"<<endl;
 }
 
 

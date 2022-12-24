@@ -25,6 +25,7 @@
 #include <bitset>
 #include <map>
 #include "LogsGenerator.h"
+#include <string>
 
 typedef int seq_nr;
 

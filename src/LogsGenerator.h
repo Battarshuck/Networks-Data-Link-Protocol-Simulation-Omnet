@@ -12,17 +12,19 @@
 
 using namespace std;
 
+static ofstream* logFile;
 class LogsGenerator {
 
 private:
-    ofstream logFile;
+
+
 public:
     LogsGenerator();
     virtual ~LogsGenerator();
 
     void log_ReadLine(string, string, string);
     void log_BeforeTransmission(string startTime, string id, string seqNum , string payload, char trailer,
-            string modified, int lost, string duplicate, string delay);
+            char modified, int lost, char duplicate, char delay);
     void log_TimeOut(string, string, string);
     void log_ControlFrame(string, string, string, string, int);
 };
