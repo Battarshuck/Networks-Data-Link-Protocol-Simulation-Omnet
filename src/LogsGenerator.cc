@@ -29,14 +29,17 @@ void LogsGenerator::log_BeforeTransmission(string startTime, string id, string s
 {
     bitset<8> temp(trailer);
     string myLost;
+    string isModified = "1";
     if(lost == 0)
         myLost = "No";
     else
         myLost = "Yes";
+    if(modified == '0')
+        isModified = "-1";
 
 
     *logFile << "At time "<<startTime<<" Node["<<id<<"] [sent] frame with seq_Num["<<seqNum<<"] and Payload["<<payload<<"]"
-            <<"and Trailer["<<temp.to_string()<<"] Modified ["<< modified <<"], Lost ["<<myLost<<"] Duplicate ["<<duplicate<<"] Delay ["
+            <<"and Trailer["<<temp.to_string()<<"] Modified ["<< isModified <<"], Lost ["<<myLost<<"] Duplicate ["<<duplicate<<"] Delay ["
             << delay << "]" << endl;
 }
 

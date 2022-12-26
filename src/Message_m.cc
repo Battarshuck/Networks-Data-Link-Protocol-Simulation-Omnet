@@ -186,6 +186,7 @@ Message::Message(const char *name, short kind) : ::omnetpp::cPacket(name,kind)
     this->frameType = 0;
     this->ackNum = 0;
     this->errorType = 0;
+    this->isSent = false;
     this->messageState = 0;
     this->messageType = 0;
 }
@@ -216,6 +217,7 @@ void Message::copy(const Message& other)
     this->ackNum = other.ackNum;
     this->errorType = other.errorType;
     this->errorString = other.errorString;
+    this->isSent = other.isSent;
     this->messageState = other.messageState;
     this->messageType = other.messageType;
 }
@@ -230,6 +232,7 @@ void Message::parsimPack(omnetpp::cCommBuffer *b) const
     doParsimPacking(b,this->ackNum);
     doParsimPacking(b,this->errorType);
     doParsimPacking(b,this->errorString);
+    doParsimPacking(b,this->isSent);
     doParsimPacking(b,this->messageState);
     doParsimPacking(b,this->messageType);
 }
@@ -244,6 +247,7 @@ void Message::parsimUnpack(omnetpp::cCommBuffer *b)
     doParsimUnpacking(b,this->ackNum);
     doParsimUnpacking(b,this->errorType);
     doParsimUnpacking(b,this->errorString);
+    doParsimUnpacking(b,this->isSent);
     doParsimUnpacking(b,this->messageState);
     doParsimUnpacking(b,this->messageType);
 }
@@ -316,6 +320,16 @@ const char * Message::getErrorString() const
 void Message::setErrorString(const char * errorString)
 {
     this->errorString = errorString;
+}
+
+bool Message::getIsSent() const
+{
+    return this->isSent;
+}
+
+void Message::setIsSent(bool isSent)
+{
+    this->isSent = isSent;
 }
 
 int Message::getMessageState() const
@@ -403,7 +417,7 @@ const char *MessageDescriptor::getProperty(const char *propertyname) const
 int MessageDescriptor::getFieldCount() const
 {
     omnetpp::cClassDescriptor *basedesc = getBaseClassDescriptor();
-    return basedesc ? 9+basedesc->getFieldCount() : 9;
+    return basedesc ? 10+basedesc->getFieldCount() : 10;
 }
 
 unsigned int MessageDescriptor::getFieldTypeFlags(int field) const
@@ -424,8 +438,9 @@ unsigned int MessageDescriptor::getFieldTypeFlags(int field) const
         FD_ISEDITABLE,
         FD_ISEDITABLE,
         FD_ISEDITABLE,
+        FD_ISEDITABLE,
     };
-    return (field>=0 && field<9) ? fieldTypeFlags[field] : 0;
+    return (field>=0 && field<10) ? fieldTypeFlags[field] : 0;
 }
 
 const char *MessageDescriptor::getFieldName(int field) const
@@ -444,10 +459,11 @@ const char *MessageDescriptor::getFieldName(int field) const
         "ackNum",
         "errorType",
         "errorString",
+        "isSent",
         "messageState",
         "messageType",
     };
-    return (field>=0 && field<9) ? fieldNames[field] : nullptr;
+    return (field>=0 && field<10) ? fieldNames[field] : nullptr;
 }
 
 int MessageDescriptor::findField(const char *fieldName) const
@@ -461,8 +477,9 @@ int MessageDescriptor::findField(const char *fieldName) const
     if (fieldName[0]=='a' && strcmp(fieldName, "ackNum")==0) return base+4;
     if (fieldName[0]=='e' && strcmp(fieldName, "errorType")==0) return base+5;
     if (fieldName[0]=='e' && strcmp(fieldName, "errorString")==0) return base+6;
-    if (fieldName[0]=='m' && strcmp(fieldName, "messageState")==0) return base+7;
-    if (fieldName[0]=='m' && strcmp(fieldName, "messageType")==0) return base+8;
+    if (fieldName[0]=='i' && strcmp(fieldName, "isSent")==0) return base+7;
+    if (fieldName[0]=='m' && strcmp(fieldName, "messageState")==0) return base+8;
+    if (fieldName[0]=='m' && strcmp(fieldName, "messageType")==0) return base+9;
     return basedesc ? basedesc->findField(fieldName) : -1;
 }
 
@@ -482,10 +499,11 @@ const char *MessageDescriptor::getFieldTypeString(int field) const
         "int",
         "int",
         "string",
+        "bool",
         "int",
         "int",
     };
-    return (field>=0 && field<9) ? fieldTypeStrings[field] : nullptr;
+    return (field>=0 && field<10) ? fieldTypeStrings[field] : nullptr;
 }
 
 const char **MessageDescriptor::getFieldPropertyNames(int field) const
@@ -559,8 +577,9 @@ std::string MessageDescriptor::getFieldValueAsString(void *object, int field, in
         case 4: return long2string(pp->getAckNum());
         case 5: return long2string(pp->getErrorType());
         case 6: return oppstring2string(pp->getErrorString());
-        case 7: return long2string(pp->getMessageState());
-        case 8: return long2string(pp->getMessageType());
+        case 7: return bool2string(pp->getIsSent());
+        case 8: return long2string(pp->getMessageState());
+        case 9: return long2string(pp->getMessageType());
         default: return "";
     }
 }
@@ -582,8 +601,9 @@ bool MessageDescriptor::setFieldValueAsString(void *object, int field, int i, co
         case 4: pp->setAckNum(string2long(value)); return true;
         case 5: pp->setErrorType(string2long(value)); return true;
         case 6: pp->setErrorString((value)); return true;
-        case 7: pp->setMessageState(string2long(value)); return true;
-        case 8: pp->setMessageType(string2long(value)); return true;
+        case 7: pp->setIsSent(string2bool(value)); return true;
+        case 8: pp->setMessageState(string2long(value)); return true;
+        case 9: pp->setMessageType(string2long(value)); return true;
         default: return false;
     }
 }

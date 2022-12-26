@@ -69,7 +69,6 @@ class Node : public cSimpleModule
                                        //data.second -> actual text
 
     vector<Message*> senderMsgBuffer;
-    vector<ErrorType> senderMsgErrorBuffer;
 
     vector<string> recData;
 
@@ -96,7 +95,7 @@ class Node : public cSimpleModule
     void resendBuffer();
     void handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg);
     void updateMessageStateInBuffer(seq_nr seqNum);
-
+    void resetTimer();
 };
 
 #endif

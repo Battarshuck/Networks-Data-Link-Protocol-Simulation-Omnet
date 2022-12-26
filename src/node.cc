@@ -37,7 +37,6 @@ void Node::readData()
         text = line.substr(5, line.length() - 5);
         data.push_back(make_pair(errorCode, text));
     }
-
     inputFile.close();
 }
 //*******************************************************
@@ -185,11 +184,11 @@ void Node::rec(Message*msg)
         {
             string s =to_string(msg->getAckNum());
             msg->setName(s.c_str());
-            sendDelayed(msg, transmissionDelay, "out");
-            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
+            sendDelayed(msg, transmissionDelay+processingTime, "out");
+            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
         }
         else
-            logs.log_ControlFrame(to_string(x), to_string(getIndex()), type, to_string(msg->getAckNum()), 1);
+            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()), type, to_string(msg->getAckNum()), 1);
     }
     else
     {
@@ -202,11 +201,11 @@ void Node::rec(Message*msg)
                 {
         string s =to_string(msg->getAckNum());
         msg->setName(s.c_str());
-        sendDelayed(msg, transmissionDelay, "out");
-        logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
+        sendDelayed(msg, transmissionDelay+processingTime, "out");
+        logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
                 }
         else
-            logs.log_ControlFrame(to_string(x), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 1);
+            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 1);
 
     }
 
@@ -232,17 +231,32 @@ seq_nr Node::dec(seq_nr lastAck)
  }
 //**********************************************************
 void Node::startTimer(seq_nr seqNum){
-    Message* timerMessage = new Message("TIMEOUT");
+    if(timerMessages.find(seqNum) == timerMessages.end()){
+        Message* timerMessage = new Message("TIMEOUT");
 
-    timerMessage->setPayload(to_string(seqNum).c_str());
-    timerMessage->setMessageType(TIMEOUT_MSG);
+        timerMessage->setPayload(to_string(seqNum).c_str());
+        timerMessage->setMessageType(TIMEOUT_MSG);
 
-    timerMessages[seqNum] = timerMessage;
+        timerMessages[seqNum] = timerMessage;
 
-    scheduleAt(simTime()+timeout, timerMessage);
+        scheduleAt(simTime()+timeout, timerMessage);
+    }
 }
 
 //**********************************************************
+void Node::resetTimer(){
+////    if(timerMessages[seqNum]){
+//        cancelAndDelete(timerMessages[seqNum]);
+//        timerMessages.erase(seqNum);
+//    }
+    for (auto it = timerMessages.begin(); it != timerMessages.end(); it++)
+    {
+        cancelAndDelete(it->second);
+    }
+    timerMessages.clear();
+}
+
+//***********************************************************
 void Node::stopTimer(seq_nr seqNum){
     if(timerMessages[seqNum]){
         cancelAndDelete(timerMessages[seqNum]);
@@ -283,6 +297,7 @@ void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double current
         Message* msgDup = new Message(*msg);
         msg->setErrorType(DELAYED);
         msgDup->setErrorType(DELAYED);
+        msgDup->setIsSent(true);
         scheduleAt(simTime()+processingTime*currentMsg, msg);
         scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
     }
@@ -290,6 +305,7 @@ void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double current
     {
         Message* msgDup = new Message(*msg);
         msgDup->setErrorType(CORRECT);
+        msgDup->setIsSent(true);
         msg->setErrorType(CORRECT);
         scheduleAt(simTime()+processingTime*currentMsg, msg);
         scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
@@ -306,16 +322,24 @@ void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double current
 
 void Node::resendBuffer(){
     double currentMsg = 0.0;
-    senderMsgErrorBuffer[0] = CORRECT;
+    if(senderMsgBuffer[0])
+        cout << "ana msh be null" << endl;
+    else
+        cout << "ana be null" << endl;
     senderMsgBuffer[0]->setErrorString("0000");
+    cout << "hena" << endl;
+    cout << senderMsgBuffer.size()<< endl;
     for(int i = 0; i < senderMsgBuffer.size(); ++i){
         if(senderMsgBuffer[i]->getMessageState() == WAITING){
             return;
         }
-        stopTimer(senderMsgBuffer[i]->getSeqNum());
+        senderMsgBuffer[i]->setIsSent(true);
+//        stopTimer(senderMsgBuffer[i]->getSeqNum());
         senderMsgBuffer[i]->setMessageState(WAITING);
+        Message* copyMessage = new Message(*senderMsgBuffer[i]);
         currentMsg++;
-        handlingMsgErrors(senderMsgBuffer[i], senderMsgErrorBuffer[i], currentMsg);
+        ErrorType error = checkErrorType(senderMsgBuffer[i]->getErrorString(), copyMessage);
+        handlingMsgErrors(copyMessage, error, currentMsg);
     }
 
 }
@@ -338,7 +362,9 @@ void Node::sender(Message*msg, bool isSelfMessage){
             if(msg->getMessageType() == TIMEOUT_MSG)
             {
                 logs.log_TimeOut(to_string((double)(simTime().dbl())), to_string(myRole), msg->getPayload());
+                resetTimer();
                 resendBuffer();
+
             }
             else
             {
@@ -347,7 +373,8 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 updateMessageStateInBuffer(msg->getSeqNum());
 
                 startTimer(msg->getSeqNum());
-                logs.log_ReadLine(to_string((double)(simTime().dbl())-processingTime), to_string(myRole), msg->getErrorString());
+                if(!msg->getIsSent())
+                    logs.log_ReadLine(to_string((double)(simTime().dbl())-processingTime), to_string(myRole), msg->getErrorString());
                 logs.log_BeforeTransmission(to_string((double)(simTime().dbl())), to_string(myRole), to_string(msg->getSeqNum()), msg->getPayload(), msg->getTrailer(),
                  msg->getErrorString()[0], msg->getErrorString()[1] - '0', msg->getErrorString()[2],  msg->getErrorString()[3]);
 
@@ -372,7 +399,6 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 if(msg->getAckNum() == ackExpected){
                     stopTimer(msg->getSeqNum());
                     senderMsgBuffer.erase(senderMsgBuffer.begin());
-                    senderMsgErrorBuffer.erase(senderMsgErrorBuffer.begin());
                     inc(ackExpected);
                 }
 
@@ -388,6 +414,9 @@ void Node::sender(Message*msg, bool isSelfMessage){
 
         double currentMsg = 0.0;
 
+        if(data.size() < senderWindowSize){
+            senderWindowSize = data.size();
+        }
         if(currentDataIndex < data.size()){
             while(senderMsgBuffer.size() < senderWindowSize)
             {
@@ -399,11 +428,11 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 Message* newMsg = new Message(*msg);
                 senderMsgBuffer.push_back(newMsg); // Put it into buffer before modification
                 ErrorType typesOfError= checkErrorType(data[currentDataIndex].first, msg);
-
-                senderMsgErrorBuffer.push_back(typesOfError);
                 currentDataIndex++;
                 inc(nextFrameToSend);
                 handlingMsgErrors(msg, typesOfError, currentMsg);
+
+
             }
         }
 }

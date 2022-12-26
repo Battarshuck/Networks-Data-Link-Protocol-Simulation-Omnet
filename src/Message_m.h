@@ -33,6 +33,7 @@
  *     int ackNum;
  *     int errorType;
  *     string errorString;
+ *     bool isSent;
  *     int messageState;
  *     int messageType; // 0 -> coordinator message
  *    					// 1 -> node message
@@ -49,6 +50,7 @@ class Message : public ::omnetpp::cPacket
     int ackNum;
     int errorType;
     ::omnetpp::opp_string errorString;
+    bool isSent;
     int messageState;
     int messageType;
 
@@ -83,6 +85,8 @@ class Message : public ::omnetpp::cPacket
     virtual void setErrorType(int errorType);
     virtual const char * getErrorString() const;
     virtual void setErrorString(const char * errorString);
+    virtual bool getIsSent() const;
+    virtual void setIsSent(bool isSent);
     virtual int getMessageState() const;
     virtual void setMessageState(int messageState);
     virtual int getMessageType() const;
