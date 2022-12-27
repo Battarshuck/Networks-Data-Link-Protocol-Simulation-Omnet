@@ -48,15 +48,21 @@ void LogsGenerator::log_TimeOut(string startTime, string id, string seqNum)
     *logFile << "Time out event at time "<<startTime<<", at Node["<<id<<"] for frame with seq_num = "<<seqNum<<endl;
 }
 
-void LogsGenerator::log_ControlFrame(string startTime, string id, string type, string seqNum, int loss)
+void LogsGenerator::log_ControlFrame(string startTime, string id, int type, string seqNum, int loss)
 {
     string myLoss;
+    string ackType;
         if(loss == 0)
             myLoss = "No";
         else
             myLoss = "Yes";
 
-    *logFile << "At time "<< startTime <<", Node["<<id<<"] sending "<< type << " with number["<<seqNum<<"], loss ["<< myLoss <<"]"<<endl;
+        if(type==1)
+            ackType="ACK";
+        else
+            ackType="NACK";
+
+    *logFile << "At time "<< startTime <<", Node["<<id<<"] sending "<< ackType << " with number["<<seqNum<<"], loss ["<< myLoss <<"]"<<endl;
 }
 
 

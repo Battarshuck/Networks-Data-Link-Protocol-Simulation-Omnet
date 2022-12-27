@@ -91,7 +91,7 @@ class Node : public cSimpleModule
 
     void sender(Message*msg, bool isSelfMessage);
     ErrorType checkErrorType(string errorString, Message* msg);
-    void rec(Message*msg);
+    void rec(Message*msg,bool isSelfMessage);
     void resendBuffer();
     void handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg);
     void updateMessageStateInBuffer(seq_nr seqNum);

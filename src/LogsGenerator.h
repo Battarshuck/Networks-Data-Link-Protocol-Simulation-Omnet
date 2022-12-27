@@ -26,7 +26,7 @@ public:
     void log_BeforeTransmission(string startTime, string id, string seqNum , string payload, char trailer,
             char modified, int lost, char duplicate, char delay);
     void log_TimeOut(string, string, string);
-    void log_ControlFrame(string, string, string, string, int);
+    void log_ControlFrame(string, string, int, string, int);
 };
 
 #endif /* LOGSGENERATOR_H_ */

@@ -159,59 +159,68 @@ void Node::modification(Message*msg)
 
  }
 //******************Receiver Function*************************************
-void Node::rec(Message*msg)
+void Node::rec(Message *msg, bool isSelfMessage)
 {
-    string type;
-    if(msg->getSeqNum()==frameExpected)
+
+    if (!isSelfMessage)
     {
-        if(checkParity(msg))
+        if (msg->getSeqNum() == frameExpected) // if received frame is the frame expected
         {
-            msg->setAckNum(frameExpected);
-            inc(frameExpected);
+            if (checkParity(msg)) // check for error
+            {
+                msg->setAckNum(frameExpected);
+                inc(frameExpected);
+                msg->setFrameType(ACK);
+                recData.push_back(msg->getPayload());
+            }
+            else // if error is found send nack
+            {
+                msg->setAckNum(frameExpected);
+                msg->setFrameType(NACK);
+            }
+            int Loss = int(uniform(0, 100));
+            double x = (double)simTime().dbl();
+            if (Loss >= LossProb) // check for loss probability
+            {
+                string s = to_string(msg->getAckNum());
+                msg->setName(s.c_str());
+                msg->setErrorType(CORRECT);
+            }
+            else // msg was lost
+            {
+                msg->setErrorType(LOSS);
+            }
+            scheduleAt(simTime() + processingTime, msg);
+        }
+        else // if the received frame wasn't the one expected, send ack for the last received frame
+        {
+            msg->setAckNum(dec(frameExpected));
+            double x = (double)simTime().dbl();
             msg->setFrameType(ACK);
-            recData.push_back(msg->getPayload());
-            type="ACK";
+            int Loss = int(uniform(0, 100));
+            if (Loss >= LossProb)
+            {
+                string s = to_string(msg->getAckNum());
+                msg->setName(s.c_str());
+                msg->setErrorType(CORRECT);
+            }
+            else
+            {
+                msg->setErrorType(LOSS);
+            }
+            scheduleAt(simTime() + processingTime, msg);
         }
-        else
-        {
-            msg->setAckNum(frameExpected);
-            msg->setFrameType(NACK);
-            type="NACK";
-        }
-        int Loss=int(uniform(0,100));
-        double x = (double)simTime().dbl();
-        if(Loss>=LossProb)
-        {
-            string s =to_string(msg->getAckNum());
-            msg->setName(s.c_str());
-            sendDelayed(msg, transmissionDelay+processingTime, "out");
-            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()), type, to_string(msg->getAckNum()), 0);
-        }
-        else
-            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()), type, to_string(msg->getAckNum()), 1);
     }
     else
     {
-        //send ack of the last received frame
-        msg->setAckNum(dec(frameExpected));
         double x = (double)simTime().dbl();
-        msg->setFrameType(ACK);
-        int Loss=int(uniform(0,100));
-        if(Loss>=LossProb)
-                {
-        string s =to_string(msg->getAckNum());
-        msg->setName(s.c_str());
-        sendDelayed(msg, transmissionDelay+processingTime, "out");
-        logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 0);
-                }
-        else
-            logs.log_ControlFrame(to_string(x+processingTime), to_string(getIndex()),"ACK",to_string(msg->getAckNum()), 1);
-
+        if (msg->getErrorType() != LOSS)
+        {
+            sendDelayed(msg, transmissionDelay, "out");
+        }
+        logs.log_ControlFrame(to_string(x), to_string(getIndex()), msg->getFrameType(), to_string(msg->getAckNum()), msg->getErrorType());
     }
-
-
 }
-
 
 //*******************GO BACKN FUNCTIONS*********************
 void Node::inc(seq_nr& currentSeqNum){
@@ -472,12 +481,11 @@ void Node::handleMessage(cMessage *msg)
         if(msg2->getMessageType() == COORD_MSG && stoi(msg2->getPayload()) == getIndex()){
             myRole = SENDER;
             readData();
-
         }
     }
     if(myRole == SENDER){
         sender(msg2,msg->isSelfMessage());
     }else if(myRole == RECEIVER){
-        rec(msg2);
+        rec(msg2,msg->isSelfMessage());
     }
 }

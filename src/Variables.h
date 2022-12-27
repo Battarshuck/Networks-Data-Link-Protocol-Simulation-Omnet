@@ -17,11 +17,11 @@ enum frameType{
 };
 
 enum ErrorType{
+    CORRECT,
     LOSS,
     DELAYED,
     DUPLICATED,
     DELAYED_AND_DUPLICATED,
-    CORRECT
 };
 
 enum MessageState{
