@@ -33,7 +33,6 @@ packet Message {
    int ackNum;
    int errorType;
    string errorString;
-   bool isSent;
    int messageState;
    int messageType; // 0 -> coordinator message
    					// 1 -> node message

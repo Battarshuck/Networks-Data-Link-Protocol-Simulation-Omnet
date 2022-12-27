@@ -38,7 +38,7 @@ void LogsGenerator::log_BeforeTransmission(string startTime, string id, string s
         isModified = "-1";
 
 
-    *logFile << "At time "<<startTime<<" Node["<<id<<"] [sent] frame with seq_Num["<<seqNum<<"] and Payload["<<payload<<"]"
+    *logFile << "At time "<<startTime<<", Node["<<id<<"] [sent] frame with seq_Num["<<seqNum<<"] and Payload["<<payload<<"]"
             <<"and Trailer["<<temp.to_string()<<"] Modified ["<< isModified <<"], Lost ["<<myLost<<"] Duplicate ["<<duplicate<<"] Delay ["
             << delay << "]" << endl;
 }

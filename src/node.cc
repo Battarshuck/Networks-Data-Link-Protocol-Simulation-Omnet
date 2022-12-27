@@ -3,15 +3,15 @@
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU Lesser General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
+//
 
 #include "node.h"
 
@@ -80,8 +80,6 @@ char Node::createParity(string payload, seq_nr seqNum)
     {
         parity = parity ^ bitset<8>(payload[i]);
     }
-
-//    cout << parity.to_string()<<endl;
     return (char)parity.to_ulong();
 
 }
@@ -214,11 +212,14 @@ void Node::rec(Message *msg, bool isSelfMessage)
     else
     {
         double x = (double)simTime().dbl();
+        logs.log_ControlFrame(to_string(x), to_string(getIndex()), msg->getFrameType(), to_string(msg->getAckNum()), msg->getErrorType());
         if (msg->getErrorType() != LOSS)
         {
             sendDelayed(msg, transmissionDelay, "out");
+        }else{
+            delete msg;
         }
-        logs.log_ControlFrame(to_string(x), to_string(getIndex()), msg->getFrameType(), to_string(msg->getAckNum()), msg->getErrorType());
+
     }
 }
 
@@ -305,16 +306,14 @@ void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double current
     {
         Message* msgDup = new Message(*msg);
         msg->setErrorType(DELAYED);
-        msgDup->setErrorType(DELAYED);
-        msgDup->setIsSent(true);
+        msgDup->setErrorType(DELAYED_AND_DUPLICATED);
         scheduleAt(simTime()+processingTime*currentMsg, msg);
         scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
     }
     else if(typesOfError == DUPLICATED)
     {
         Message* msgDup = new Message(*msg);
-        msgDup->setErrorType(CORRECT);
-        msgDup->setIsSent(true);
+        msgDup->setErrorType(DUPLICATED);
         msg->setErrorType(CORRECT);
         scheduleAt(simTime()+processingTime*currentMsg, msg);
         scheduleAt(simTime()+processingTime*currentMsg+duplicationDelay, msgDup);
@@ -331,18 +330,11 @@ void Node::handlingMsgErrors(Message*msg, ErrorType typesOfError, double current
 
 void Node::resendBuffer(){
     double currentMsg = 0.0;
-    if(senderMsgBuffer[0])
-        cout << "ana msh be null" << endl;
-    else
-        cout << "ana be null" << endl;
     senderMsgBuffer[0]->setErrorString("0000");
-    cout << "hena" << endl;
-    cout << senderMsgBuffer.size()<< endl;
     for(int i = 0; i < senderMsgBuffer.size(); ++i){
         if(senderMsgBuffer[i]->getMessageState() == WAITING){
             return;
         }
-        senderMsgBuffer[i]->setIsSent(true);
 //        stopTimer(senderMsgBuffer[i]->getSeqNum());
         senderMsgBuffer[i]->setMessageState(WAITING);
         Message* copyMessage = new Message(*senderMsgBuffer[i]);
@@ -375,6 +367,10 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 resendBuffer();
 
             }
+            else if(msg->getMessageType() == PRINT_MSG){
+                logs.log_ReadLine(to_string((double)(simTime().dbl())), to_string(myRole), msg->getErrorString());
+                delete msg;
+            }
             else
             {
 
@@ -382,20 +378,24 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 updateMessageStateInBuffer(msg->getSeqNum());
 
                 startTimer(msg->getSeqNum());
-                if(!msg->getIsSent())
-                    logs.log_ReadLine(to_string((double)(simTime().dbl())-processingTime), to_string(myRole), msg->getErrorString());
+                char duplicationIndex = msg->getErrorString()[2];
+                if(msg->getErrorType() == DELAYED_AND_DUPLICATED || msg->getErrorType() == DUPLICATED){
+                    duplicationIndex = '2';
+                }
                 logs.log_BeforeTransmission(to_string((double)(simTime().dbl())), to_string(myRole), to_string(msg->getSeqNum()), msg->getPayload(), msg->getTrailer(),
-                 msg->getErrorString()[0], msg->getErrorString()[1] - '0', msg->getErrorString()[2],  msg->getErrorString()[3]);
+                 msg->getErrorString()[0], msg->getErrorString()[1] - '0', duplicationIndex,  msg->getErrorString()[3]);
 
-                if(msg->getErrorType() == DELAYED)
+                if(msg->getErrorType() == DELAYED || msg->getErrorType() == DELAYED_AND_DUPLICATED)
                 {
                     msg->setErrorType(CORRECT);
                     sendDelayed(msg, errorDelay+transmissionDelay, "out");
                 }
-                else if(msg->getErrorType() == CORRECT)
+                else if(msg->getErrorType() == CORRECT || msg->getErrorType() == DUPLICATED )
                 {
                     msg->setErrorType(CORRECT);
                     sendDelayed(msg, transmissionDelay, "out");
+                }else if(msg->getErrorType() == LOSS){
+                    delete msg;
                 }
 
             }
@@ -407,28 +407,29 @@ void Node::sender(Message*msg, bool isSelfMessage){
             {
                 if(msg->getAckNum() == ackExpected){
                     stopTimer(msg->getSeqNum());
+                    delete senderMsgBuffer[0];
                     senderMsgBuffer.erase(senderMsgBuffer.begin());
                     inc(ackExpected);
                 }
-
+                delete msg;
 
             }
             else if(msg->getFrameType() == NACK)
             {
-                cancelAndDelete(msg);
-//                resendBuffer();
+                delete msg;
             }
         }
 
 
         double currentMsg = 0.0;
 
-        if(data.size() < senderWindowSize){
-            senderWindowSize = data.size();
-        }
+
         if(currentDataIndex < data.size()){
+
             while(senderMsgBuffer.size() < senderWindowSize)
             {
+                if(currentDataIndex == data.size())
+                    break;
                 msg = createFrame(data[currentDataIndex].second, nextFrameToSend);
                 currentMsg++;
                 msg->setMessageState(WAITING);
@@ -437,6 +438,14 @@ void Node::sender(Message*msg, bool isSelfMessage){
                 Message* newMsg = new Message(*msg);
                 senderMsgBuffer.push_back(newMsg); // Put it into buffer before modification
                 ErrorType typesOfError= checkErrorType(data[currentDataIndex].first, msg);
+
+                if(currentMsg == 1){
+                    logs.log_ReadLine(to_string((double)(simTime().dbl())), to_string(myRole), msg->getErrorString());
+                }else{
+                    Message* printMessage = new Message(*msg);
+                    printMessage->setMessageType(PRINT_MSG);
+                    scheduleAt(simTime()+processingTime*(currentMsg-1), printMessage);
+                }
                 currentDataIndex++;
                 inc(nextFrameToSend);
                 handlingMsgErrors(msg, typesOfError, currentMsg);
@@ -479,6 +488,7 @@ void Node::handleMessage(cMessage *msg)
 
     if(!msg->isSelfMessage()){
         if(msg2->getMessageType() == COORD_MSG && stoi(msg2->getPayload()) == getIndex()){
+            coordMsg = msg;
             myRole = SENDER;
             readData();
         }
@@ -488,4 +498,10 @@ void Node::handleMessage(cMessage *msg)
     }else if(myRole == RECEIVER){
         rec(msg2,msg->isSelfMessage());
     }
+}
+
+Node::~Node() {
+    // TODO Auto-generated destructor stub
+//    if(coordMsg)
+//        delete coordMsg;
 }

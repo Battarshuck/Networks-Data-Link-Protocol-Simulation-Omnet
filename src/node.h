@@ -41,6 +41,8 @@ class Node : public cSimpleModule
     LogsGenerator logs;
     role myRole;
 
+    cMessage* coordMsg;
+
     double processingTime;
 
     double LossProb;
@@ -75,6 +77,7 @@ class Node : public cSimpleModule
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
+    ~Node();
 
     void readData();
     bool checkParity(Message *msg);                   //check message parity (error detection)
@@ -96,6 +99,7 @@ class Node : public cSimpleModule
     void handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg);
     void updateMessageStateInBuffer(seq_nr seqNum);
     void resetTimer();
+    bool isAckWithInRange(seq_nr receivedAckNum);
 };
 
 #endif
