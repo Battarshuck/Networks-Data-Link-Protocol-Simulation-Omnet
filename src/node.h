@@ -43,37 +43,30 @@ class Node : public cSimpleModule
 
     cMessage* coordMsg;
 
-    double processingTime;
-
-    double LossProb;
-
-    double timeout;
-    int senderWindowSize;
-    int receiverWindowSize = 1;
     seq_nr maxSeqNum;
-
     seq_nr currentDataIndex;
     seq_nr nextFrameToSend;
     seq_nr ackExpected;
-    bool isNetworkLayerReady;
+    seq_nr frameExpected=0;
 
+    int receiverWindowSize = 1;
+    int senderWindowSize;
 
+    double processingTime;
+    double LossProb;
+    double timeout;
     double errorDelay;
     double duplicationDelay;
     double transmissionDelay;
 
-    seq_nr frameExpected=0;
-
-
+    bool isNetworkLayerReady;
 
     map<seq_nr, Message*> timerMessages;
-    vector<pair<string, string>> data; //data.first -> error code e.g. 1011
-                                       //data.second -> actual text
-
-    vector<Message*> senderMsgBuffer;
 
     vector<string> recData;
-
+    vector<Message*> senderMsgBuffer;
+    vector<pair<string, string>> data; //data.first -> error code e.g. 1011
+                                       //data.second -> actual text
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
@@ -85,21 +78,26 @@ class Node : public cSimpleModule
     Message* createFrame(string text, seq_nr seqNum);    //creates the frame
     string byteStuffing(string text);                 //DONT USE (utility function)
     string byteDeStuffing(string payload);
-
-    void inc(seq_nr& currentSeqNum);
-    seq_nr dec(seq_nr lastAck);
-    void startTimer(seq_nr seqNum);
-    void stopTimer(seq_nr seqNum);
     void modification(Message*msg);
 
+
     void sender(Message*msg, bool isSelfMessage);
-    ErrorType checkErrorType(string errorString, Message* msg);
-    void rec(Message*msg,bool isSelfMessage);
-    void resendBuffer();
+    void startTimer(seq_nr seqNum);
+    void stopTimer(seq_nr seqNum);
     void handlingMsgErrors(Message*msg, ErrorType typesOfError, double currentMsg);
+    void resendBuffer();
+    ErrorType checkErrorType(string errorString, Message* msg);
     void updateMessageStateInBuffer(seq_nr seqNum);
     void resetTimer();
     bool isAckWithInRange(seq_nr receivedAckNum);
+    void fromNetworkLayer(Message *msg, double& currentMsg);
+    void handleAcks(Message *msg);
+    void toPhysicalLayer(Message *msg);
+
+    void rec(Message*msg,bool isSelfMessage);
+
+    seq_nr dec(seq_nr lastAck);
+    void inc(seq_nr& currentSeqNum);
 };
 
 #endif
